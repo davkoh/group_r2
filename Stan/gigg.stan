@@ -37,7 +37,7 @@ transformed parameters {
   vector[p] beta;
   
   for (j in 1:p){
-    Sigma[j] = sigma^2 * tau2 * gamma2[pg[p]] * lambda2[p];
+    Sigma[j] = tau2 * gamma2[pg[p]] * lambda2[p];
   }
   
   beta  = z_beta .* sqrt(Sigma);
