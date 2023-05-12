@@ -4,7 +4,7 @@ data {
   vector[N] Y; // observations
   int<lower=0> p; // total number of covariates
   int<lower = 0> G; // number of groups
-  int pg[p]; // vector of group sizes (of lenth p)
+  int pg[p]; // vector of group sizes (of lenth p) // alternative array[p] int pg;
   matrix[N,p] X; //total covariate matrix
   
   // Hyperpriors for the beta' prior
