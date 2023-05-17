@@ -8,8 +8,8 @@ data {
   matrix[N,p] X; //total covariate matrix
   
   // Hyperpriors for the beta' prior
-  real<lower=0> bg; // controls correlation with group shrinkage
-  real<lower=0> ag; // controls group level sparsity
+  vector<lower=0>[p] bg; // controls correlation with group shrinkage
+  vector<lower=0>[G] ag; // controls group level sparsity
   
   // sigma prior sd
   real<lower=0> sigma_sd; // sd of sigma prior
