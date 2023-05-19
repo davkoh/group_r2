@@ -39,7 +39,7 @@ transformed parameters {
   
   real<lower=0> tau2 = R2 / (1 - R2);
   matrix[N,G] mug;
-  vector[p] beta;
+  vector[G] beta;
   
   
   for (g in 1:G){
