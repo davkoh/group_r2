@@ -9,8 +9,8 @@ data {
   // R2 Stuff
   real<lower=0> mean_R2;  // mean of the R2 prior
   real<lower=0> prec_R2;  // precision of the R2 prior
-  vector<lower=0,upper=1>[G] cons; // concentration vector of the Dirichlet prior for all covariates
-  vector<lower=0,upper=1>[p] cons_g; // concentration vector of the Dirichlet prior by group
+  vector<lower=0>[G] cons; // concentration vector of the Dirichlet prior for all covariates
+  vector<lower=0>[p] cons_g; // concentration vector of the Dirichlet prior by group
   
   // sigma prior sd
   real<lower=0> sigma_sd; // sd of sigma prior
