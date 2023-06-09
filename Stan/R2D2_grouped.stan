@@ -188,6 +188,9 @@ generated quantities {
   real y_tilde_test[Ntest];
   vector[Ntest] mu_tilde_test = rep_vector(0.0, Ntest)+ymean+Intercept +Xctest*beta; 
   
+  //--- R2
+  real<lower=0, upper=1> R2 = variance(mu_tilde) / (variance(mu_tilde) + sigma^2 ); 
+  
   //---y_tilde calc
   for (n in 1:N) {
     log_lik[n] =normal_lpdf( y[n] | mu_tilde[n], sigma); 

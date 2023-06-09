@@ -61,8 +61,8 @@ r2d2groupedfit <- function(params){
   mod <- readRDS("stan/r2d2groupedcmdstanmodel")
   
   p= params$p
-  n= params$n
   X= params$X
+  n= params$n
   y= params$y
   ntest= params$ntest
   ytest= params$ytest
@@ -72,13 +72,14 @@ r2d2groupedfit <- function(params){
   R2D2_mean_R2=  params$R2D2_mean_R2
   R2D2_prec_R2=  params$R2D2_prec_R2
   R2D2_alpha_groups = params$R2D2_alpha_groups
+  R2D2_groups_alphas = params$R2D2_groups_alphas
   seed= params$seed
   
   dat <- list(
     N=n, p=p+1,
     X=  cbind(rep(1,n), X), 
     y= as.numeric(y), 
-    G= params$G, pg= params$pg,
+    G= params$groups_n, pg= params$group_ps,
     Ntest= ntest, 
     Xtest= cbind(rep(1,ntest),Xtest),  
     ytest= as.numeric(ytest),  
@@ -114,3 +115,6 @@ r2d2groupedfit <- function(params){
     return(list(fit= fit, fit.error=fit.error))
   }
 }
+
+
+

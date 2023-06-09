@@ -327,7 +327,7 @@ gen_coef_groups_var <- function(params){
   for(i in 1:ngroups){
     p= ps[i] 
     nu= nus[i]
-    params_temp= list(p=p, nu=nu, seed= seed)
+    params_temp= list(p=p, nu=nu, seed= params$seed)
     
     #calculate variance per group
     gen_coef_fn_var <- get( paste0(params$group_gen_coef_functions[i], "_var"),
@@ -339,5 +339,391 @@ gen_coef_groups_var <- function(params){
   var_b
 }
 
+#---------- Simulation Functions
+
+
+dataset_cond_sim <- function(sim_cond,
+                             sim_params,
+                             smqoi, 
+                             seed=NULL,
+                             path=NULL,
+                             ncores=1,
+                             special_name=NULL){
+  
+  set.seed(seed)
+  seed_list <- sample(1000000000:.Machine$integer.max,
+                      size = sim_params$nsims)
+  
+  ParallelLogger::clearLoggers()
+  ParallelLogger::addDefaultConsoleLogger(name=paste0("dataset_cond_sim_", as.character(seed)))
+  ParallelLogger::addDefaultErrorReportLogger(name=paste0("dataset_cond_sim_", as.character(seed)))
+  on.exit(unregisterLogger(paste0("dataset_cond_sim_", as.character(seed))))
+  
+  if (file.exists(paste0(paste(path, paste0(special_name,"_",sim_cond$id), sep = "/"), ".RDS"))) {
+    return(readRDS(paste0(paste(path, paste0(special_name,"_",sim_cond$id), sep = "/"), ".RDS")))
+  } else {
+    if (ncores > 1) {
+      # Multiprocessing setup
+      
+      cluster <- parallel::makeCluster(ncores)
+      doParallel::registerDoParallel(cluster)
+      
+      parallel::clusterExport(cl= cluster, c('sim_params', 'smqoi'))
+      
+      parallel::clusterEvalQ(cl = cluster, {
+        library(brms)
+        library(tidybayes)
+        library(cmdstanr)
+        
+        
+        library(tibble)
+        library(dplyr)
+        library(mvtnorm)
+        library(LaplacesDemon)
+        library(parallel)
+        library(Matrix)
+        library(gtools)
+        library(ParallelLogger)
+        
+        
+        source("R/aux_functions.R")
+        source("R/big_sim_full_simulation.R")
+
+        source("R/R2D2_alpha_gen.R")
+        source("R/big_sim_mcmc_params.R")
+        source("R/stan_fits.R")
+        
+        cmdstanr::set_cmdstan_path(sim_params$cmdstan_path)
+        
+      })
+      
+      `%dopar%` <- foreach::`%dopar%`
+      
+      # Multiprocessing run
+      results <- foreach::foreach(
+        par_seed = seed_list
+      ) %dopar% {
+        cond_sim(
+          sim_params = sim_params,
+          sim_cond = sim_cond,
+          smqoi = smqoi,
+          seed = par_seed
+        )
+        
+        
+      }
+      
+      # Multiprocessing teardown
+      parallel::stopCluster(cluster)
+    } 
+    # TODO : add single core processing
+    final_result <- do.call(rbind, results)
+    #final_result$data_config_seed <- seed
+    
+    if (!is.null(path)) {
+      saveRDS(final_result, paste0(paste(path, paste0(special_name,"_",sim_cond$id), sep = "/"), ".RDS"))
+    }
+    return(final_result) 
+  }
+}
+
+#Simulate data and summarise a fit given a simulation condition
+cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
+  
+  
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  #------ Generate data
+  #--- Extract settings for data generation
+  
+  n <- sim_cond$n
+  ntest <- sim_cond$ntest
+  p <- sim_cond$p
+  nu <- sim_cond$nu 
+  type <- sim_cond$type
+  alpha <- sim_cond$alpha
+  sigma <- sim_cond$sigma
+  rho <- sim_cond$rho
+  
+  # TODO: At the moment all groups are same size with the same behavior
+
+  groups_n = sim_cond$Gs # number of groups
+  group_rhos= rep(sim_cond$rho, groups_n) #rho in each group
+  group_cor_type= rep("AR", groups_n) #type of correlation structure 
+  #number of covariates inside each group
+  group_ps = rep(sim_cond$p/groups_n, groups_n) 
+  
+  # how to generate coefficients inside each group
+  group_nus = rep(sim_cond$nu ,groups_n)
+  group_gen_coef_functions= rep(sim_params$gen_coef, groups_n) 
+  
+  # list of parameters that will be used in data generating procedure
+  group_params <- list(n=n, 
+                       ntest= ntest,
+                       p=p,
+                       sigma= sigma, 
+                       seed= seed,
+                       groups_n= groups_n,
+                       group_nus= group_nus,
+                       group_rhos= group_rhos ,
+                       group_cor_type= group_cor_type,
+                       group_ps= group_ps, 
+                       group_gen_coef_functions= group_gen_coef_functions)
+  
+  
+  # Covariance matrix of X
+  covx <- get_sigmaX_grouped(group_params)
+  
+  sigma <- sim_cond$sigma
+  
+  # Design matrix X
+  
+  set.seed(seed)
+  X <- rmvnorm(n, mean= rep(0,p), sigma=covx)
+  
+  set.seed(seed+12313451)
+  Xtest <- rmvnorm(ntest, mean= rep(0,p), sigma=covx)
+  
+  set.seed(seed)
+  
+  
+  #--- Generate data y and  b
+  # same data for all fits
+  
+  
+  # coefficients
+  alpha <- 0
+  beta <- gen_coef_groups(group_params)
+  
+  #vector of real parameters
+  rtheta <- list(beta= beta, 
+                      sigma= sim_cond$igma, 
+                      R2= sim_cond$R2)
+  
+  # Generate y
+  y= as.numeric(cbind(rep(1,n), X)%*%c(alpha,beta)+rnorm(n,0, sigma))          
+  ytest= as.numeric(cbind(rep(1,ntest), Xtest)%*%c(alpha,beta)+rnorm(ntest,0, sigma))          
+  
+
+  #--- Fit different models
+  fits_params <- sim_params$fits_params 
+  nfits <- fits_params$nfits #number of fits
+  fits_list <- fits_params$fits_list #fits to considered
+  names_list <- fits_params$names_list
+  nnames <- fits_params$nnames
+  
+  # Summary quantities of interest
+  voi= smqoi$voi #variables of interest
+  moi= smqoi$moi #metrics of interest
+  probsoi= smqoi$probsoi #quantiles of interest 
+  
+  summary_list <- vector(mode = "list", length = nnames)
+  params_list <- vector(mode = "list", length = nnames)
+
+  
+  #---same data for all fits 
+  data_gen_params <- group_params
+  data_gen_params$y <- y
+  data_gen_params$ytest <-ytest
+  data_gen_params$beta <- beta
+  data_gen_params$X <- X
+  data_gen_params$Xtest <- Xtest
+  
+  #create a temporary folder to store stan csv files
+  
+  temp_directory <- paste0("temp_stan_files/",seed)
+  dir.create(temp_directory)
+  data_gen_params$temp_directory= temp_directory
+  #stan_models <- fits_params$stan_models
+  
+  
+  
+  #Cycle through models
+  for(i in 1:nnames){
+    
+    #CHEKCPOIONT!!!1
+    mcmc_params <- make_mcmc_params(names_list[i], 
+                                    fits_params$mcmc_params[[i]], 
+                                    data_gen_params)
+    
+    mcmc_params$iter <-  fits_params$mcmc_params[[i]]$iter
+    
+    params_list[[i]] <- append(mcmc_params,
+                               data_gen_params)
+    
+    
+    fitfn <- get(paste0(fits_list[i],"fit"))
+    fit <- fitfn(params_list[[i]])
+    
+    #Summarize
+    if(fit$fit.error){
+      summary_list[[i]] <- NULL
+    }else{
+      fit_summary_params <- list(fit= fit$fit,
+                                 rtheta=rtheta,
+                                 standat= params_list[[i]],
+                                 voi=voi,
+                                 moi= moi,
+                                 seed= seed,
+                                 probsoi= probsoi)
+      
+      summary_list[[i]] <- myfitsummary(fit_summary_params)
+    }      
+    
+  }
+  
+  #delete the temporary stan files
+  unlink(temp_directory, recursive = TRUE)
+  names(summary_list) <- names_list
+  
+  
+  return(summary_list)
+  
+}
+
+#---- summary functions
+#Percentile estimator
+invq <- function(theta,draws){
+  #estimator of rqs, such that given theta
+  # P( X <= theta)= rqs
+  rqs= c()
+  for(j in 1:length(theta)){
+    rqs[j]=mean(draws[,,j]<theta[j])
+  }
+  return(rqs) 
+}
+
+
+#Calculate posterior rmse observations
+prmse <-function(standat, fit){
+  #posterior rmse
+  y=standat$y
+  ytest=standat$ytest
+  N=standat$n
+  Ntest=standat$ntest
+  
+  # tildes
+  
+  tildes=fit$draws(c("y_tilde","mu_tilde","y_tilde_test" ,"mu_tilde_test"),
+                   format="draws_matrix")
+  niter=dim(tildes)[1]
+  
+  y_tilde= tildes[,1:N]
+  mu_tilde= tildes[,(N+1):(2*N)]
+  y_tilde_test= tildes[,(2*N+1):(2*N+Ntest)]
+  mu_tilde_test= tildes[,(2*N+1+Ntest):(2*N+2*Ntest)]
+  
+  #train mse
+  ytemp=matrix(y, byrow = TRUE, ncol = N, nrow = niter) 
+  mse1_train=mean((y-colMeans(y_tilde))^2)
+  mse2_train=mean((ytemp-y_tilde)^2)
+  mse3_train=mean((y-colMeans(mu_tilde))^2)
+  mse4_train=mean((ytemp-mu_tilde)^2)
+  
+  #test mse
+  ytesttemp=matrix(ytest, byrow = TRUE, ncol = Ntest, nrow = niter) 
+  mse1_test=mean((ytest-colMeans(y_tilde_test))^2)
+  mse2_test=mean((ytesttemp-y_tilde_test)^2)
+  mse3_test=mean((ytest-colMeans(mu_tilde_test))^2)
+  mse4_test=mean((ytesttemp-mu_tilde_test)^2)
+  
+  mses_train= c(mse1_train,mse2_train,mse3_train,mse4_train)
+  mses_test= c(mse1_test,mse2_test, mse3_test, mse4_test)
+  
+  return(sqrt(c(mses_train, mses_test)))
+  
+}  
+
+prmse_theta0 <- function(fit, theta_name, real_theta) {
+  theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
+  theta_temp= matrix( real_theta, byrow = TRUE, nrow =dim(theta_hat)[1], 
+                      ncol = dim(theta_hat)[2])
+  sqrt(mean((theta_hat - theta_temp)^2))
+}
+
+#Calculate posterior per parameter rmse
+prmse_theta_pp <- function(fit, theta_name, real_theta){
+  
+  
+  # per parameter RMSE
+  # prmse for each coefficient
+  
+  # This is our favorite one c:
+  # We want to have comparability across different ps
+  
+  temp= c()
+  theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
+  for(i in 1:length(real_theta)){
+    #rmse per parameter
+    temp[i]= sqrt(mean((theta_hat[, i]-real_theta[i])^2))
+  }
+  #average of rmses
+  mean(temp)
+  
+}
+
+prmse_theta <- function(fit, theta_name, real_theta) {
+  theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
+  theta_temp=matrix( real_theta, byrow = TRUE, nrow =dim(theta_hat)[1], ncol = dim(theta_hat)[2])
+  
+  temp <- rowSums(((theta_hat - theta_temp))*((theta_hat - theta_temp)))
+  sqrt(mean(temp))
+  
+}
+
+myfitsummary <- function(fit_summary_params){
+  #fit: stan fit
+  #qoi: quantities of interest
+  #variables of interest:
+  
+  fit= fit_summary_params$fit
+  rtheta= fit_summary_params$rtheta
+  standat=fit_summary_params$standat
+  p= standat$p
+  voi=fit_summary_params$voi
+  moi= fit_summary_params$moi 
+  probsoi= fit_summary_params$probsoi
+  seed= fit_summary_params$seed
+  
+  # results and summary 
+  sm <-  fit$summary(voi, 
+                     moi,
+                     qs= ~posterior::quantile2(.,probs=probsoi)) #%>% 
+    #add_column(invq_real = invq( rtheta , 
+     #                            fit$draws(voi, format= "draws_array"))) %>% 
+    #add_column( invq_g0 = 1-invq(rep(0, length(rtheta)), 
+     #                            fit$draws(voi, format="draws_array"))) 
+  
+  perf <- as.list(c( sum(fit$summary(c("log_lik"), mean)$mean),
+                     sum(fit$summary(c("log_lik_test"), mean)$mean),
+                     as.vector(t(fit$loo()$estimates))[1:4],
+                     as.vector(table(cut(fit$loo()$diagnostics$pareto_k, 
+                                         breaks=c(-Inf,0.5, 0.7, 1, Inf)))),
+                     prmse_theta(fit, "beta",standat$b ),
+                     prmse_theta0(fit, "beta",standat$b ),
+                     prmse_theta_pp( fit , "beta", standat$b),
+                     prmse_theta_pp(fit, "R2", as.numeric(rtheta["R2"]) ),
+                     #prmse_theta_pp(fit, "sigma", standat$sigma ),
+                     prmse(standat,fit)))
+  
+  names(perf) <- c("lpd_train", "lpd_test",
+                   "elpd_loo","elpd_loo_sd","p_loo", "p_loo_sd",
+                   "paretok_good", "paretok_ok","paretok_bad", "paretok_verybad",
+                   "rmse_b", "rmse_b0", "rmse_bpp",
+                   "rmse_R2",
+                   #"rmse_sigma", 
+                   "rmse1_train", "rmse2_train", "rmse3_train", "rmse4_train",
+                   "rmse1_test", "rmse2_test", "rmse3_test", "rmse4_test")
+  
+  
+  final_result <- list(seed=seed,time=fit$time(), 
+                       sm=sm, perf=perf, 
+                       rtheta=rtheta)
+  
+  
+  
+}
 
 

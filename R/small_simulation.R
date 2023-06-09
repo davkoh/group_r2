@@ -37,8 +37,9 @@ group_ps = rbinom(G, 10, 0.5) #number of covariates inside each group
 group_ps = rep(5, G)
 p= sum(group_ps)
 
+# how to generate coefficients inside each group
 group_nus = rep(0.5,G)
-group_gen_coef_functions= rep("gen_coef_sparse_norm", G) # how to generate coefficients inside each group
+group_gen_coef_functions= rep("gen_coef_sparse_norm", G) 
 
 
 # list of parameters that will be used in data generating procedure
@@ -52,7 +53,6 @@ group_params <- list(seed= seed,
 
 
 # Covariance matrix of X
-
 covx <- get_sigmaX_grouped(group_params)
 
 # Plot correlation matrix of X
@@ -97,6 +97,7 @@ ytest= as.numeric(cbind(rep(1,ntest), Xtest)%*%c(alpha,beta)+rnorm(ntest,0, sigm
 #--- stan
 
 #---  R2D2 grouped JA
+
 file <- file.path("stan", "R2D2_grouped.stan")
 mod_R2D2grouped <- cmdstan_model(file)
 saveRDS(mod_R2D2grouped, "stan/r2d2groupedcmdstanmodel") 
