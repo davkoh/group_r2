@@ -123,8 +123,6 @@ generated quantities{
     y_tilde_test[n]= normal_rng(mu_tilde_test[n], sigma);  //copy and paste model (executed once per sample) 
   }
   
-  //--- R2
-  real<lower=0, upper=1> R2 = variance(mu_tilde) / (variance(mu_tilde) + sigma^2 ); 
   
   
 }
