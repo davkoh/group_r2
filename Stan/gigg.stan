@@ -1,4 +1,4 @@
-
+// GIGG prior
 data {
   int<lower=1> N; // number of observations
   vector[N] Y; // observations
@@ -122,6 +122,9 @@ generated quantities{
     log_lik_test[n] =normal_lpdf( Ytest[n] | mu_tilde_test[n], sigma); 
     y_tilde_test[n]= normal_rng(mu_tilde_test[n], sigma);  //copy and paste model (executed once per sample) 
   }
+  
+  //--- R2
+  real<lower=0, upper=1> R2 = variance(mu_tilde) / (variance(mu_tilde) + sigma^2 ); 
   
   
 }
