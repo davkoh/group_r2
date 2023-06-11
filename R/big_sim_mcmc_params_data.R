@@ -12,13 +12,15 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   alpha_params <- list(api=api)
   
+  #--- R2D2
+  
   mcmc_params_r2d2 <- list(R2D2_mean_R2=  R2D2_mean_R2,
                            R2D2_prec_R2=  R2D2_prec_R2,
                            gen_R2D2_alpha_function = R2D2_alpha_function,
                            gen_R2D2_alpha_params = alpha_params,
                            iter=iter)
   
-  #group r2d2 
+  #--- Group r2d2 
   
   mcmc_params_r2d2_grouped <- list(R2D2_mean_R2=  R2D2_mean_R2,
                                    R2D2_prec_R2=  R2D2_prec_R2,
@@ -31,17 +33,31 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   # create the parameters given to the stan fit
   # see stan_fits.R
   
-  names_list = c("r2d2_grouped")
+  #--- gigg
+  
+  mcmc_params_gigg <- NULL
+  
+  #---
+  
+  names_list = c("r2d2, 
+                 r2d2_grouped", 
+                 "gigg")
   
   #Fits to be used
   # Stan fits that will be used
-  fits_list = c(rep("r2d2grouped",1))
+  fits_list = c("r2d2",
+                 "r2d2grouped",
+                  "gigg"
+                )
   
   nfits = length(fits_list) #number of fits
   
   
-  mcmc_params <-  list(#mcmc_params_r2d2= mcmc_params_r2d2, 
-                       mcmc_params_r2d2_grouped = mcmc_params_r2d2_grouped)
+  #---- Add parameters of each model  being used
+  
+  mcmc_params <-  list(mcmc_params_r2d2= mcmc_params_r2d2, 
+                       mcmc_params_r2d2_grouped = mcmc_params_r2d2_grouped, 
+                       mcmc_params_gigg= mcmc_params_gigg)
   #Used in main script of simulation
   
   fits_params <-  list(nfits=nfits, 

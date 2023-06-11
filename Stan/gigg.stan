@@ -1,10 +1,14 @@
 // GIGG prior
+
+// TODO: add option to simulate from the prior only
+// TODO: add scaling by sdsx
+
 data {
   int<lower=1> N; // number of observations
   vector[N] Y; // observations
   int<lower=0> p; // total number of covariates (includes intercept)
   int<lower = 0> G; // number of groups
-  int pg[p-1]; // vector of group sizes (of lenth p) // alternative array[p] int pg;
+  int pg[p-1]; // vector of group sizes (of length p-1) // alternative array[p] int pg;
   matrix[N,p] X; //total covariate matrix (includes column of 1s)
   
   real<lower=0> sigma;  // dispersion parameter
@@ -18,6 +22,8 @@ data {
   // Hyperpriors for the beta' prior
   vector<lower=0>[p] bg; // controls correlation with group shrinkage
   vector<lower=0>[G] ag; // controls group level sparsity
+  
+  
   
   // sigma prior sd
   //real<lower=0> sigma_sd; // sd of sigma prior
@@ -63,21 +69,22 @@ parameters {
   // Parameters 
   real<lower=0> tau2; // global shrinkage parameter
   vector<lower=0>[G] gamma2; // group shrinkage factor
-  vector<lower=0>[p] lambda2; // local shrinkage parameter
+  vector<lower=0>[pc] lambda2; // local shrinkage parameter
   
   // Group level terms
-  vector[p] z_beta;
+  vector[pc] z_beta;
   }
 
 transformed parameters {
-  vector<lower=0>[p] Sigma;
-  vector[p] beta;
+  vector<lower=0>[pc] Sigma; // vector of sds
+  vector[pc] beta;
   
-  for (j in 1:p){
-    Sigma[j] = tau2 * gamma2[pg[p]] * lambda2[p] ; // TODO: scale by sdx?
+  for (j in 1:pc){
+    // TODO: Mention TYPO here?
+    Sigma[j] = tau2 * gamma2[pg[j]] * lambda2[j] / sds_X[j]^2; 
+  
+    beta  = z_beta .* sqrt(Sigma); 
   }
-  
-  beta  = z_beta .* sqrt(Sigma); 
   
 }
 
@@ -87,7 +94,7 @@ model {
   //alpha ~ normal(0, 10);
   Intercept ~ normal(0,10);
   z_beta ~ std_normal();
-  tau2 ~ student_t(1, 0, sigma);
+  tau2 ~ student_t(1, 0, sigma); // TODO: Should we change this? Discuss
   //sigma ~ normal(0, sd(Y)); 
   gamma2 ~ gamma(ag,1);
   lambda2 ~ inv_gamma(bg,1);

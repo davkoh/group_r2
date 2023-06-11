@@ -61,4 +61,22 @@ r2d2_grouped_mcmc_params <- function(mcmc_params, data_gen_params){
   
 }
 
-#TODO: add gig
+gigg_mcmc_params <- function(mcmc_params, data_gen_params){
+  #fit-specific params
+  groups_n <- data_gen_params$groups_n
+  p <- data_gen_params$p
+  #TODO: Discuss with DK
+  
+  # Horsehoe gigg see paper
+
+  ag <- rep(1/2, groups_n )
+  bg <- rep(1/2, p)
+  
+
+  return(list( ag= ag, 
+               bg= bg))
+  
+}
+
+
+

@@ -416,12 +416,14 @@ dataset_cond_sim <- function(sim_cond,
       # Multiprocessing teardown
       parallel::stopCluster(cluster)
     } 
-    # TODO : add single core processing
+    # TODO : add single core processing (someday)
     final_result <- do.call(rbind, results)
     #final_result$data_config_seed <- seed
     
     if (!is.null(path)) {
-      saveRDS(final_result, paste0(paste(path, paste0(special_name,"_",sim_cond$id), sep = "/"), ".RDS"))
+      saveRDS(final_result,
+              paste0(paste(path, paste0(special_name,"_",sim_cond$id), 
+                           sep = "/"), ".RDS"))
     }
     return(final_result) 
   }
@@ -535,9 +537,8 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   
   temp_directory <- paste0("temp_stan_files/",seed)
   dir.create(temp_directory)
-  data_gen_params$temp_directory= temp_directory
+  data_gen_params$temp_directory <- temp_directory
   #stan_models <- fits_params$stan_models
-  
   
   
   #Cycle through models
@@ -578,13 +579,13 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   unlink(temp_directory, recursive = TRUE)
   names(summary_list) <- names_list
   
-  
   return(summary_list)
   
 }
 
-#---- summary functions
-#Percentile estimator
+#--- Summary functions
+
+#--Percentile estimator
 invq <- function(theta,draws){
   #estimator of rqs, such that given theta
   # P( X <= theta)= rqs
@@ -596,7 +597,7 @@ invq <- function(theta,draws){
 }
 
 
-#Calculate posterior rmse observations
+#--Calculate posterior rmse observations
 prmse <-function(standat, fit){
   #posterior rmse
   y=standat$y
@@ -606,14 +607,17 @@ prmse <-function(standat, fit){
   
   # tildes
   
-  tildes=fit$draws(c("y_tilde","mu_tilde","y_tilde_test" ,"mu_tilde_test"),
+  tildes=fit$draws(c("y_tilde",
+                     "mu_tilde",
+                     "y_tilde_test" ,
+                     "mu_tilde_test"),
                    format="draws_matrix")
-  niter=dim(tildes)[1]
   
-  y_tilde= tildes[,1:N]
-  mu_tilde= tildes[,(N+1):(2*N)]
-  y_tilde_test= tildes[,(2*N+1):(2*N+Ntest)]
-  mu_tilde_test= tildes[,(2*N+1+Ntest):(2*N+2*Ntest)]
+  niter = dim(tildes)[1]
+  y_tilde = tildes[,1:N]
+  mu_tilde = tildes[,(N+1):(2*N)]
+  y_tilde_test = tildes[,(2*N+1):(2*N+Ntest)]
+  mu_tilde_test = tildes[,(2*N+1+Ntest):(2*N+2*Ntest)]
   
   #train mse
   ytemp=matrix(y, byrow = TRUE, ncol = N, nrow = niter) 
@@ -718,12 +722,14 @@ myfitsummary <- function(fit_summary_params){
                    "rmse1_test", "rmse2_test", "rmse3_test", "rmse4_test")
   
   
-  final_result <- list(seed=seed,time=fit$time(), 
-                       sm=sm, perf=perf, 
+  final_result <- list(seed=seed,
+                       time=fit$time(), 
+                       sm=sm, 
+                       perf=perf, 
                        rtheta=rtheta)
   
   
-  
+  final_result
 }
 
 
