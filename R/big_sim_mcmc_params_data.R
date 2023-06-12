@@ -39,15 +39,15 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   #---
   
-  names_list = c("r2d2, 
-                 r2d2_grouped", 
+  names_list = c("r2d2", 
+                 "r2d2_grouped", 
                  "gigg")
   
   #Fits to be used
   # Stan fits that will be used
   fits_list = c("r2d2",
-                 "r2d2grouped",
-                  "gigg"
+                "r2d2grouped",
+                "gigg"
                 )
   
   nfits = length(fits_list) #number of fits

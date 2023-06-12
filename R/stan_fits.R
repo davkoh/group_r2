@@ -32,7 +32,7 @@ r2d2fit <- function(params){
     mod$sample(
       data = dat,
       seed= seed,
-      chains = 4,
+      chains = 1,
       refresh = 250,
       iter_sampling =params$iter,
       output_dir= params$temp_directory,
@@ -141,13 +141,13 @@ giggfit <- function(params){
     X=  cbind(rep(1,n), X), 
     Y= as.numeric(y), 
     G= params$groups_n,
-    pg= params$group_ps,
+    pg= params$pg,
     Ntest= ntest, 
     Xtest= cbind(rep(1,ntest),Xtest),  
     Ytest= as.numeric(ytest),  
     sigma= params$sigma, 
     bg = bg, 
-    ag = ag,
+    ag = ag
     #prior_only=0
   )
   

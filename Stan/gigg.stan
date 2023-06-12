@@ -6,7 +6,7 @@
 data {
   int<lower=1> N; // number of observations
   vector[N] Y; // observations
-  int<lower=0> p; // total number of covariates (includes intercept)
+  int<lower=1> p; // total number of covariates (includes intercept)
   int<lower = 0> G; // number of groups
   int pg[p-1]; // vector of group sizes (of length p-1) // alternative array[p] int pg;
   matrix[N,p] X; //total covariate matrix (includes column of 1s)
@@ -20,11 +20,10 @@ data {
   
   
   // Hyperpriors for the beta' prior
-  vector<lower=0>[p] bg; // controls correlation with group shrinkage
   vector<lower=0>[G] ag; // controls group level sparsity
+  vector<lower=0>[p-1] bg; // controls correlation with group shrinkage
   
-  
-  
+
   // sigma prior sd
   //real<lower=0> sigma_sd; // sd of sigma prior
 }
@@ -81,7 +80,7 @@ transformed parameters {
   
   for (j in 1:pc){
     // TODO: Mention TYPO here?
-    Sigma[j] = tau2 * gamma2[pg[j]] * lambda2[j] / sds_X[j]^2; 
+    Sigma[j] = tau2 * gamma2[ pg[j] ] * lambda2[j]; 
   
     beta  = z_beta .* sqrt(Sigma); 
   }
@@ -92,7 +91,7 @@ model {
 
   // priors
   //alpha ~ normal(0, 10);
-  Intercept ~ normal(0,10);
+  Intercept ~ normal(0,5);
   z_beta ~ std_normal();
   tau2 ~ student_t(1, 0, sigma); // TODO: Should we change this? Discuss
   //sigma ~ normal(0, sd(Y)); 
