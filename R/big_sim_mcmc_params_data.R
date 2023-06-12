@@ -6,8 +6,8 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   
   # R2D2s
-  R2D2_mean_R2= 0.1
-  R2D2_prec_R2= 1
+  R2D2_mean_R2= 0.5
+  R2D2_prec_R2= 2
   api= 0.5
   
   alpha_params <- list(api=api)
@@ -26,7 +26,7 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
                                    R2D2_prec_R2=  R2D2_prec_R2,
                                    gen_R2D2_alpha_function = R2D2_alpha_function,
                                    api_coefs= 0.5 , #TODO: should come from somewhere else? adaptive?
-                                   api_groups= 1 ,
+                                   api_groups= 0.5 ,
                                    iter=iter)
   
   # names of the mcmc_params functions
