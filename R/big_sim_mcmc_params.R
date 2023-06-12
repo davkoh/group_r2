@@ -69,8 +69,8 @@ gigg_mcmc_params <- function(mcmc_params= NULL, data_gen_params){
   
   # Horsehoe gigg see paper
 
-  ag <- rep(1, groups_n )
-  bg <- rep(1, p)
+  ag <- rep(0.5, groups_n )
+  bg <- rep(0.5, p)
   pg <- rep( c(1:(groups_n)), each= p/groups_n )
 
   return(list( ag= ag, 

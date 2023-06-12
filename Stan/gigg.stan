@@ -81,9 +81,10 @@ transformed parameters {
   for (j in 1:pc){
     // TODO: Mention TYPO here?
     Sigma[j] = tau2 * gamma2[ pg[j] ] * lambda2[j]; 
-  
-    beta  = z_beta .* sqrt(Sigma); 
+    
   }
+  beta  = z_beta .* sqrt(Sigma); 
+  
   
 }
 
@@ -94,9 +95,11 @@ model {
   Intercept ~ normal(0,5);
   z_beta ~ std_normal();
   tau2 ~ student_t(1, 0, sigma); // TODO: Should we change this? Discuss
+  //tau2 ~ normal(0, sigma);
   //sigma ~ normal(0, sd(Y)); 
   gamma2 ~ gamma(ag,1);
   lambda2 ~ inv_gamma(bg,1);
+ 
   
   // likelihood
   Yc ~ normal_id_glm(Xc,Intercept,beta,sigma);

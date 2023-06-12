@@ -501,7 +501,7 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   
   #vector of real parameters
   rtheta <- list(beta= beta, 
-                      sigma= sim_cond$igma, 
+                      #sigma= sim_cond$igma, 
                       R2= sim_cond$R2)
   
   # Generate y
@@ -544,7 +544,7 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   #Cycle through models
   for(i in 1:nnames){
     
-    #CHEKCPOIONT!!!1
+    
     mcmc_params <- make_mcmc_params(names_list[i], 
                                     fits_params$mcmc_params[[i]], 
                                     data_gen_params)
@@ -705,9 +705,9 @@ myfitsummary <- function(fit_summary_params){
                      as.vector(t(fit$loo()$estimates))[1:4],
                      as.vector(table(cut(fit$loo()$diagnostics$pareto_k, 
                                          breaks=c(-Inf,0.5, 0.7, 1, Inf)))),
-                     prmse_theta(fit, "beta",standat$b ),
-                     prmse_theta0(fit, "beta",standat$b ),
-                     prmse_theta_pp( fit , "beta", standat$b),
+                     prmse_theta(fit, "beta",standat$beta ),
+                     prmse_theta0(fit, "beta",standat$beta ),
+                     prmse_theta_pp( fit , "beta", standat$beta),
                      prmse_theta_pp(fit, "R2", as.numeric(rtheta["R2"]) ),
                      #prmse_theta_pp(fit, "sigma", standat$sigma ),
                      prmse(standat,fit)))
