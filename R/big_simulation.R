@@ -29,10 +29,6 @@ library(ParallelLogger)
 # library(bayesplot)
 # library(paletteer)# Simulation Design
 
-
-
-
-
 #--- Functions
 
 source("R/aux_functions.R")
@@ -40,7 +36,7 @@ source("R/stan_fits.R")
 source("R/big_sim_full_simulation.R")
 source("R/big_sim_mcmc_params.R")
 source("R/big_sim_mcmc_params_data.R")
-
+source("R/R2D2_alpha_gen.R")
 
 
 #--- 
@@ -83,7 +79,7 @@ extra_conds <- data.frame( R2D2_alpha_function= R2D2_alpha_fns,
 
 # TODO: change this to the desired number of simulations
 
-nsims = 40 # number of simulation per condition
+nsims = 50 # number of simulation per condition
 iter= 2000 # MCMC iters
 
 # sm: summary quantities of interest
@@ -94,8 +90,8 @@ iter= 2000 # MCMC iters
 
 smqoi <- list(voi= c("beta",
                      "b_Intercept", 
-                     "R2D2_R2",
-                     "sigma"),
+                     "R2"),
+                     # sigma, 
                      #"R2D2_phi", 
                      #"lambdas") ,
               moi=c("mean",
@@ -112,7 +108,7 @@ smqoi <- list(voi= c("beta",
 
 #--- Run simulation
 
-path_results <- "big_simulation/final_results"
+path_results <- "R/big_simulation/final_results"
 global_seed =  117 
 
 # TODO: change to your cmdstan path
@@ -127,7 +123,13 @@ dir.create(temp_stan_directory)
 tot= nrow(extra_conds) # For each extra condition we run all of the conditions of the simulations
 my_name= "C" #Name of the files. Format my_name_global_seed_sim_cond_id 
 
-# Compile fits that will be used
+#----- Compile fits that will be used
+
+
+file <- file.path("stan", "R2D2.stan")
+mod_R2D2<- cmdstan_model(file)
+saveRDS(mod_R2D2, "stan/r2d2cmdstanmodel") 
+
 
 file <- file.path("stan", "R2D2_grouped.stan")
 mod_R2D2_grouped <- cmdstan_model(file)
@@ -138,10 +140,11 @@ mod_gigg <- cmdstan_model(file)
 saveRDS(mod_gigg, "stan/giggcmdstanmodel") 
 
 
-stan_models_list <- list(mod_R2D2_grouped= mod_R2D2_grouped, 
+stan_models_list <- list(mod_R2D2= mod_R2D2,
+                         mod_R2D2_grouped= mod_R2D2_grouped,
                          mod_gigg = mod_gigg)
 
-#---- Run simulation
+#- Run simulation
 
 
 for(i in 1:tot){
@@ -211,7 +214,7 @@ for(i in 1:tot){
   
 
   # RUN FULL SIMULATION! 
-  full_simulation(sim_conds= sim_conds,  
+  full_simulation(sim_conds= sim_conds[c(4:5),],  
                   sim_params= sim_params,
                   smqoi=smqoi,
                   ncores_simulation = ncores_simulation,
