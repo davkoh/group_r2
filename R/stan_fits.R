@@ -133,6 +133,7 @@ giggfit <- function(params){
   #fit-specific params
   ag =  params$ag
   bg =  params$bg
+  pg = params$pg
   seed= params$seed
   
   dat <- list(
@@ -141,13 +142,13 @@ giggfit <- function(params){
     X=  cbind(rep(1,n), X), 
     Y= as.numeric(y), 
     G= params$groups_n,
-    pg= params$pg,
     Ntest= ntest, 
     Xtest= cbind(rep(1,ntest),Xtest),  
     Ytest= as.numeric(ytest),  
     sigma= params$sigma, 
     bg = bg, 
-    ag = ag
+    ag = ag,
+    pg= pg
     #prior_only=0
   )
   
@@ -155,11 +156,11 @@ giggfit <- function(params){
     mod$sample(
       data = dat,
       seed= seed,
-      chains = 1,
+      chains = 8,
       refresh = 250,
       iter_sampling =params$iter,
       output_dir= params$temp_directory,
-      adapt_delta=0.99), silent= FALSE)
+      adapt_delta=0.95), silent= FALSE)
   
   if (is(fit, "try-error")) {
     fit.error <- TRUE
