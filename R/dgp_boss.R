@@ -1,5 +1,5 @@
 dgp_boss <- function(N = 500,K = 50,G = 5,rho = 0.8,type = "dist", SNR = 0.7){
-# "dist" = distributed, "conc" = concentrated, S = number of data sets
+# "dist" = distributed, "conc" = concentrated
   # Generate X
   mux <- array(0,c(K,1))
   rho_in <- rho
