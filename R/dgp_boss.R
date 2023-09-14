@@ -23,5 +23,5 @@ dgp_boss <- function(N = 500,K = 50,G = 5,rho = 0.8,type = "dist", SNR = 0.7){
   # Generate Y
   Y <- X%*%beta + rnorm(N)*as.numeric(sigma)
   
-  return(list(Y = Y, X = X, beta = beta))
+  return(list(Y = Y, X = X, beta = beta, sigma = sigma , empR2 = t(beta)%*%t(X)%*%X%*%beta / (t(beta)%*%t(X)%*%X%*%beta + N*sigma^2) ))
 }
