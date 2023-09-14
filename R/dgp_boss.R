@@ -4,7 +4,7 @@ dgp_boss <- function(N = 500,K = 50,G = 5,rho = 0.8,type = "dist", SNR = 0.7){
   mux <- array(0,c(K,1))
   rho_in <- rho
   rho_out <- 0.2
-  block <- diag(pg)+rho_in -diag(pg)*rho_in
+  block <- diag(K/G)+rho_in -diag(K/G)*rho_in
   
   covx <- kronecker(diag(G),block)
   covx[covx==0] <- 0.2
