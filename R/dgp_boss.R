@@ -19,7 +19,7 @@ dgp_boss <- function(N = 500,K = 50,G = 5,rho = 0.8,type = "dist", SNR = 0.7){
   }
   
   # Generate sigma
-  sigma <- sqrt((1-SNR)/SNR * t(beta)%*%t(X)%*%X%*%beta)
+  sigma <- sqrt((1-SNR)/SNR * t(beta)%*%t(X)%*%X%*%beta / N)
   # Generate Y
   Y <- X%*%beta + rnorm(N)*as.numeric(sigma)
   
