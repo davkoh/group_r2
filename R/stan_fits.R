@@ -76,10 +76,12 @@ r2d2groupedfit <- function(params){
   seed= params$seed
   
   dat <- list(
-    N=n, p=p+1,
+    N=n,
+    p=p+1,
     X=  cbind(rep(1,n), X), 
     y= as.numeric(y), 
-    G= params$groups_n, pg= params$group_ps,
+    G= params$groups_n, 
+    pg= params$group_ps,
     Ntest= ntest, 
     Xtest= cbind(rep(1,ntest),Xtest),  
     ytest= as.numeric(ytest),  
@@ -156,7 +158,7 @@ giggfit <- function(params){
     mod$sample(
       data = dat,
       seed= seed,
-      chains = 8,
+      chains = 1,
       refresh = 250,
       iter_sampling =params$iter,
       output_dir= params$temp_directory,

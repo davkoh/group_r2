@@ -345,13 +345,16 @@ gen_coef_groups_var <- function(params){
 dataset_cond_sim <- function(sim_cond,
                              sim_params,
                              smqoi, 
-                             seed=NULL,
-                             path=NULL,
-                             ncores=1,
+                             seed= NULL,
+                             path= NULL,
+                             ncores= 1,
                              special_name=NULL){
   
-  set.seed(seed)
-  seed_list <- sample(1000000000:.Machine$integer.max,
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  seed_list <- sample(100000000:.Machine$integer.max,
                       size = sim_params$nsims)
   
   ParallelLogger::clearLoggers()
@@ -374,8 +377,6 @@ dataset_cond_sim <- function(sim_cond,
         library(brms)
         library(tidybayes)
         library(cmdstanr)
-        
-        
         library(tibble)
         library(dplyr)
         library(mvtnorm)
@@ -385,10 +386,11 @@ dataset_cond_sim <- function(sim_cond,
         library(gtools)
         library(ParallelLogger)
         
+        library(MASS)
         
+        #Run important scripts
         source("R/aux_functions.R")
         source("R/big_sim_full_simulation.R")
-
         source("R/R2D2_alpha_gen.R")
         source("R/big_sim_mcmc_params.R")
         source("R/stan_fits.R")
@@ -409,7 +411,7 @@ dataset_cond_sim <- function(sim_cond,
           smqoi = smqoi,
           seed = par_seed
         )
-        
+
         
       }
       
@@ -430,7 +432,7 @@ dataset_cond_sim <- function(sim_cond,
 }
 
 #Simulate data and summarise a fit given a simulation condition
-cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
+cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
   
   
   if (!is.null(seed)) {
@@ -438,6 +440,7 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   }
   
   #------ Generate data
+  
   #--- Extract settings for data generation
   
   n <- sim_cond$n
@@ -446,70 +449,79 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   nu <- sim_cond$nu 
   type <- sim_cond$type
   alpha <- sim_cond$alpha
-  sigma <- sim_cond$sigma
-  rho <- sim_cond$rho
+  #sigma <- sim_cond$sigma #check
+  rho_in <- sim_cond$rho_in
+  rho_out <- sim_cond$rho_out
+  type <- sim_cond$type
+  R2 <-  sim_cond$R2
+  G <-  sim_cond$Gs # number of groups
+  #
+  #group_cor_type= rep("AR", groups_n) #type of correlation structure 
   
-  # TODO: At the moment all groups are same size with the same behavior
-
-  groups_n = sim_cond$Gs # number of groups
-  group_rhos= rep(sim_cond$rho, groups_n) #rho in each group
-  group_cor_type= rep("AR", groups_n) #type of correlation structure 
-  #number of covariates inside each group
-  group_ps = rep(sim_cond$p/groups_n, groups_n) 
+  group_ps = rep(sim_cond$p/G, G)  #number of covariates inside each group
   
   # how to generate coefficients inside each group
-  group_nus = rep(sim_cond$nu ,groups_n)
-  group_gen_coef_functions= rep(sim_params$gen_coef, groups_n) 
+  group_nus = rep(sim_cond$nu ,G)
+  # group_gen_coef_functions= rep(sim_params$gen_coef, groups_n) 
+
   
-  # list of parameters that will be used in data generating procedure
-  group_params <- list(n=n, 
-                       ntest= ntest,
-                       p=p,
-                       sigma= sigma, 
-                       seed= seed,
-                       groups_n= groups_n,
-                       group_nus= group_nus,
-                       group_rhos= group_rhos ,
-                       group_cor_type= group_cor_type,
-                       group_ps= group_ps, 
-                       group_gen_coef_functions= group_gen_coef_functions)
-  
+  # Mean of X
+  mux <- array(0,c(p,1))
   
   # Covariance matrix of X
-  covx <- get_sigmaX_grouped(group_params)
-  
-  sigma <- sim_cond$sigma
+  block <- diag(p/G)+rho_in -diag(p/G)*rho_in
+  covx <- kronecker(diag(G),block)
+  covx[covx==0] <- rho_out
   
   # Design matrix X
   
-  set.seed(seed)
-  X <- rmvnorm(n, mean= rep(0,p), sigma=covx)
-  
-  set.seed(seed+12313451)
-  Xtest <- rmvnorm(ntest, mean= rep(0,p), sigma=covx)
-  
-  set.seed(seed)
+  X <- mvrnorm(n, mux, covx)
   
   
-  #--- Generate data y and  b
+  if (!is.null(seed)) {
+    set.seed(abs(seed-100))
+  }
+  
+  Xtest <- mvrnorm(ntest, mux, covx)
+  
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+
+  #covx <- get_sigmaX_grouped(group_params)
+  
+  #sigma <- sim_cond$sigma
+  
+  # Generate beta BOSS dgp
+  if (type == "dist"){
+    beta <- t(cbind(t(rep(0.5,5)),t(rep(1,5)),t(rep(0,p-p/G))))
+  } else {
+    beta <- array(0,c(p,1))
+    beta[seq(1,p,p/G)] <- c(0.5,1,1.5,2,2)
+  }
+  
+  group_ps <- rep(p/G, G)
+  # Generate sigma
+  sigma <- as.numeric(sqrt((1-R2)/R2 * t(beta)%*%t(X)%*%X%*%beta / n))
+  
+  #--- Generate data y 
   # same data for all fits
-  
   
   # coefficients
   alpha <- 0
-  beta <- gen_coef_groups(group_params)
+  #beta <- gen_coef_groups(group_params)
   
-  #vector of real parameters
+  # vector of real parameters
   rtheta <- list(beta= beta, 
-                      #sigma= sim_cond$igma, 
-                      R2= sim_cond$R2)
+                 sigma= sigma, 
+                 R2= R2)
   
   # Generate y
-  y= as.numeric(cbind(rep(1,n), X)%*%c(alpha,beta)+rnorm(n,0, sigma))          
-  ytest= as.numeric(cbind(rep(1,ntest), Xtest)%*%c(alpha,beta)+rnorm(ntest,0, sigma))          
+  y <-  as.numeric(cbind(rep(1,n), X)%*%c(alpha,beta)+rnorm(n,0, sigma))          
+  ytest <-as.numeric(cbind(rep(1,ntest), Xtest)%*%c(alpha,beta)+rnorm(ntest,0, sigma))          
   
-
   #--- Fit different models
+  
   fits_params <- sim_params$fits_params 
   nfits <- fits_params$nfits #number of fits
   fits_list <- fits_params$fits_list #fits to considered
@@ -524,6 +536,22 @@ cond_sim <-  function(sim_params,sim_cond, smqoi, seed = NULL){
   summary_list <- vector(mode = "list", length = nnames)
   params_list <- vector(mode = "list", length = nnames)
 
+  # list of parameters that is be used in data generating procedure
+  group_params <- list(n=n, 
+                       ntest= ntest,
+                       p=p,
+                       sigma= sigma, 
+                       seed= seed,
+                       groups_n= G,
+                       group_nus= group_nus,
+                       rho_in = rho_in, 
+                       rho_out = rho_out, 
+                       covx = covx,
+                       #group_rhos= group_rhos ,
+                       #group_cor_type= group_cor_type,
+                       group_ps= group_ps 
+                       #group_gen_coef_functions= group_gen_coef_functions
+                       )
   
   #---same data for all fits 
   data_gen_params <- group_params
@@ -682,14 +710,14 @@ myfitsummary <- function(fit_summary_params){
   #qoi: quantities of interest
   #variables of interest:
   
-  fit= fit_summary_params$fit
-  rtheta= fit_summary_params$rtheta
-  standat=fit_summary_params$standat
-  p= standat$p
-  voi=fit_summary_params$voi
-  moi= fit_summary_params$moi 
-  probsoi= fit_summary_params$probsoi
-  seed= fit_summary_params$seed
+  fit = fit_summary_params$fit
+  rtheta = fit_summary_params$rtheta
+  standat =fit_summary_params$standat
+  p = standat$p
+  voi =fit_summary_params$voi
+  moi = fit_summary_params$moi 
+  probsoi = fit_summary_params$probsoi
+  seed = fit_summary_params$seed
   
   # results and summary 
   sm <-  fit$summary(voi, 
