@@ -46,7 +46,7 @@ source("R/R2D2_alpha_gen.R")
 n= 500 #size of training data
 ntest= 200 # size of test data 
 ps= c(50) #num overall of coefficients
-rho_in = c(0.95) #correlation of X, X ~ MVN
+rho_in = c(0.8) #correlation of X, X ~ MVN
 rho_out = c(0.2)
 nus= c(0.75) #sparsity level 
 type="AR" #type of correlation matrix used
@@ -54,8 +54,8 @@ alpha= 0 #real intercept
 
 Gs= c(5) #number of groups
 
-R2= c(0.1,0.3, 0.5)  # signal to noise ratio
-type <- c("dist", "meow")
+R2= c(0.1,0.3, 0.5,0.7)  # signal to noise ratio
+type <- c("dist", "con")
 
 #simulation conditions
 sim_conds <- expand.grid(n=n, ntest=ntest, p=ps, 
@@ -93,10 +93,10 @@ iter= 2000 # MCMC iters
 # probsoi: probabilities of interest
 
 smqoi <- list(voi= c("beta",
-                     "b_Intercept", 
-                     "R2"),
-                     # sigma, 
-                     #"R2D2_phi", 
+                     "b_Intercept"), 
+                     #"R2",
+                     #"sigma"), 
+                     #"R2D2_phi", #
                      #"lambdas") ,
               moi=c("mean",
                     "sd", 
@@ -125,7 +125,7 @@ temp_stan_directory <- paste0("temp_stan_files/")
 dir.create(temp_stan_directory)
 
 tot= nrow(extra_conds) # For each extra condition we run all of the conditions of the simulations
-my_name= "F" #Name of the files. Format my_name_global_seed_sim_cond_id 
+my_name= "new_GGG" #Name of the files. Format my_name_global_seed_sim_cond_id 
 
 #----- Compile fits that will be used
 
@@ -138,12 +138,23 @@ file <- file.path("stan", "R2D2_grouped.stan")
 mod_R2D2_grouped <- cmdstan_model(file)
 saveRDS(mod_R2D2_grouped, "stan/r2d2groupedcmdstanmodel") 
 
+file <- file.path("stan", "horseshoe.stan")
+mod_horseshoe<- cmdstan_model(file)
+saveRDS(mod_horseshoe, "stan/horseshoecmdstanmodel")
+
+
+file <- file.path("stan", "rhorseshoe.stan")
+mod_rhorseshoe<- cmdstan_model(file)
+saveRDS(mod_rhorseshoe, "stan/rhorseshoecmdstanmodel")
+
 file <- file.path("stan", "gigg.stan")
 mod_gigg <- cmdstan_model(file)
 saveRDS(mod_gigg, "stan/giggcmdstanmodel") 
 
 stan_models_list <- list(mod_R2D2= mod_R2D2,
                          mod_R2D2_grouped= mod_R2D2_grouped,
+                         mod_horseshoe= mod_horseshoe,
+                         mod_rhorseshoe = mod_rhorseshoe,
                          mod_gigg = mod_gigg)
 
 #- Run simulation
@@ -249,5 +260,26 @@ for(i in 1:tot){
 # 
 # temp
 # 
+
+
+# how to make better groupings?
+
+# If we have prior knowledge about the coeficients could we possibly add it to the prior?
+# This are groups with high signal. How high should the signal be?
+# Grouping via signal strength could be categorical. Priors could be the same (they shouldnt)
+# Hypothesis: grouping of a signal strength could be important
+# g groups of different signal strength
+
+# Priors are noninformative but the grouping might be
+
+# Have a whole bunch of groups are correlated and randomly assign the coefficients to the groups
+# then make them large or small (decouple selection and assignation!)
+
+# 
+
+
+
+
+
 
 

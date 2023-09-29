@@ -27,6 +27,8 @@ r2d2_mcmc_params <- function(mcmc_params, data_gen_params){
   
 }
 
+#--- grouped R2D2
+
 r2d2_grouped_mcmc_params <- function(mcmc_params, data_gen_params){
   #fit-specific params
   R2D2_mean_R2=  mcmc_params$R2D2_mean_R2
@@ -61,6 +63,8 @@ r2d2_grouped_mcmc_params <- function(mcmc_params, data_gen_params){
   
 }
 
+#--- gigg prior
+
 gigg_mcmc_params <- function(mcmc_params= NULL, data_gen_params){
   #fit-specific params
   groups_n <- data_gen_params$groups_n
@@ -80,4 +84,34 @@ gigg_mcmc_params <- function(mcmc_params= NULL, data_gen_params){
 }
 
 
+#---- Horseshoe
+
+horseshoe_mcmc_params <- function(mcmc_params, data_params){
+  #fit-specific params
+  
+  return(list( dummy= NULL ))
+  
+}
+
+
+#--- Regularized Horseshoe
+
+
+rhorseshoe_mcmc_params <- function(mcmc_params, data_params){
+  #fit-specific params
+  
+  hs_df =  mcmc_params$hs_df
+  hs_df_global = mcmc_params$hs_df_global
+  hs_df_slab = mcmc_params$hs_df_slab
+  hs_scale_slab = mcmc_params$hs_scale_slab
+  p0 = data_params$p*0.5
+  
+  
+  return(list(hs_df = hs_df, 
+              hs_df_global= hs_df_global, 
+              hs_df_slab= hs_df_slab, 
+              hs_scale_slab= hs_scale_slab, 
+              p0= p0))
+  
+}
 

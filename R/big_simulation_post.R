@@ -21,8 +21,9 @@ extract_smdf_id <- function(big_sim_result, id){
     #Extract row corresponding to nth simulation
     row_big_sim <- big_sim_result[i,]
     
+    ptemp <- dim(row_big_sim$r2d2$sm)[1]
     for(j in 1:length(names_list)){
-      rtheta <- as.numeric( do.call(rbind, row_big_sim[[j]]$rtheta))
+      rtheta <- as.numeric( do.call(rbind, row_big_sim[[j]]$rtheta))[-ptemp]
       temp <- row_big_sim[[j]]$sm %>%
         add_column(rtheta= rtheta,  .before= "mean") %>% 
         add_column(summary_name= names_list[j], .before=1) %>% 
@@ -70,9 +71,13 @@ extract_preddf_id <- function(big_sim_result, id){
 
 # Condition to analyze
 
-exp_name="full_sim_comp_result_F1_117"
+exp_name="full_sim_comp_result_new_GGG1_117"
 
-names_list = c("r2d2", "r2d2grouped" ,"gigg"  )
+names_list = c("r2d2", 
+               "r2d2grouped",
+               "horseshoe", 
+               "rhorseshoe",
+               "gigg"  )
                
 
 # ggplot2 settings
@@ -696,8 +701,6 @@ for(id in 1:nids){
   ggsave(filename=fname, plot = last_plot())
   
   
-  
-  
 }
 
 
@@ -801,8 +804,17 @@ for(id in 1:nids){
 # # TODO:
 # # ROC curves
 # 
+#   
 #  
-# 
-# 
+#  
 #  our r2 uses more information than the r2 in lm
+
+# Conditions in which the grouping is beneficial. Their simulation conditions
+# do not allow to find this situation 
+# change importance of the grouping such that the grouped priors are better
+# are groups really useful?
+
+# If we had more efficient ways it would be doneso via the prior
+
+
 

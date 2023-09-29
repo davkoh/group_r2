@@ -33,6 +33,19 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   # create the parameters given to the stan fit
   # see stan_fits.R
   
+  # Horseshoe
+  
+  
+  # Regularised Horseshoe
+  
+  # still requires p0
+  mcmc_params_rhorseshoe <- list( hs_df = 1,
+                                  hs_df_global = 1, 
+                                  hs_df_slab = 4, 
+                                  hs_scale_slab = 2)
+  
+  
+  
   #--- gigg
   
   mcmc_params_gigg <- NULL
@@ -41,12 +54,17 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   names_list = c("r2d2", 
                  "r2d2_grouped", 
+                 "horseshoe",
+                 "rhorseshoe",
                  "gigg")
+  
   
   #Fits to be used
   # Stan fits that will be used
   fits_list = c("r2d2",
                 "r2d2grouped",
+                "horseshoe",
+                "rhorseshoe",
                 "gigg"
                 )
   
@@ -57,6 +75,8 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   mcmc_params <-  list(mcmc_params_r2d2= mcmc_params_r2d2, 
                        mcmc_params_r2d2_grouped = mcmc_params_r2d2_grouped, 
+                       mcmc_params_horseshoe = NULL, 
+                       mcmc_params_rhorseshoe = mcmc_params_rhorseshoe,
                        mcmc_params_gigg= mcmc_params_gigg)
   #Used in main script of simulation
   
