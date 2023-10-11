@@ -89,7 +89,7 @@ transformed parameters {
 }
   }
     
-  beta  = zbeta .* sqrt(sigma^2 * tau2 * R2D2_R2);
+  beta  = zbeta .* sqrt(sigma^2 * tau2 * R2D2_phi_groups);
 }
 
 model {
