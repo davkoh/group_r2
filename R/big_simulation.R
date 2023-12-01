@@ -34,6 +34,7 @@ library(ParallelLogger)
 #--- Functions
 
 source("R/aux_functions.R")
+source("R/dgp_functions.R")
 source("R/stan_fits.R")
 source("R/big_sim_full_simulation.R")
 source("R/big_sim_mcmc_params.R")

@@ -390,6 +390,7 @@ dataset_cond_sim <- function(sim_cond,
         
         #Run important scripts
         source("R/aux_functions.R")
+        source("R/dgp_functions.R")
         source("R/big_sim_full_simulation.R")
         source("R/R2D2_alpha_gen.R")
         source("R/big_sim_mcmc_params.R")
@@ -439,88 +440,18 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
     set.seed(seed)
   }
   
+  
   #------ Generate data
   
-  #--- Extract settings for data generation
+  # Data generating mechanism is needed
   
-  n <- sim_cond$n
-  ntest <- sim_cond$ntest
-  p <- sim_cond$p
-  nu <- sim_cond$nu 
-  type <- sim_cond$type
-  alpha <- sim_cond$alpha
-  #sigma <- sim_cond$sigma #check
-  rho_in <- sim_cond$rho_in
-  rho_out <- sim_cond$rho_out
-  type <- sim_cond$type
-  R2 <-  sim_cond$R2
-  G <-  sim_cond$Gs # number of groups
-  #
-  #group_cor_type= rep("AR", groups_n) #type of correlation structure 
+  # Data gen mechanism should be inside sim_cond
+  # The function should return a list
   
-  group_ps = rep(sim_cond$p/G, G)  #number of covariates inside each group
+  sim_cond$seed <- seed #need the seed to control the dgp
+  dgp_list <- make_dgp(sim_cond)
   
-  # how to generate coefficients inside each group
-  group_nus = rep(sim_cond$nu ,G)
-  # group_gen_coef_functions= rep(sim_params$gen_coef, groups_n) 
-
-  
-  # Mean of X
-  mux <- array(0,c(p,1))
-  
-  # Covariance matrix of X
-  block <- diag(p/G)+rho_in -diag(p/G)*rho_in
-  covx <- kronecker(diag(G),block)
-  covx[covx==0] <- rho_out
-  
-  # Design matrix X
-  
-  X <- mvrnorm(n, mux, covx)
-  
-  
-  if (!is.null(seed)) {
-    set.seed(abs(seed-100))
-  }
-  
-  Xtest <- mvrnorm(ntest, mux, covx)
-  
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
-
-  #covx <- get_sigmaX_grouped(group_params)
-  
-  #sigma <- sim_cond$sigma
-  
-  # Generate beta BOSS dgp
-  if (type == "dist"){
-    beta <- t(cbind(t(rep(0.5,5)),t(rep(1,5)),t(rep(0,p-p/G))))
-  } else {
-    beta <- array(0,c(p,1))
-    beta[seq(1,p,p/G)] <- c(0.5,1,1.5,2,2)
-  }
-  
-  group_ps <- rep(p/G, G)
-  # Generate sigma
-  sigma <- as.numeric(sqrt((1-R2)/R2 * t(beta)%*%t(X)%*%X%*%beta / n))
-  
-  #--- Generate data y 
-  # same data for all fits
-  
-  # coefficients
-  alpha <- 0
-  #beta <- gen_coef_groups(group_params)
-  
-  # vector of real parameters
-  rtheta <- list(beta= beta, 
-                 sigma= sigma, 
-                 R2= R2)
-  
-  # Generate y
-  y <-  as.numeric(cbind(rep(1,n), X)%*%c(alpha,beta)+rnorm(n,0, sigma))          
-  ytest <-as.numeric(cbind(rep(1,ntest), Xtest)%*%c(alpha,beta)+rnorm(ntest,0, sigma))          
-  
-  #--- Fit different models
+  #------ Fit different models
   
   fits_params <- sim_params$fits_params 
   nfits <- fits_params$nfits #number of fits
@@ -528,45 +459,15 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
   names_list <- fits_params$names_list
   nnames <- fits_params$nnames
   
-  # Summary quantities of interest
-  voi= smqoi$voi #variables of interest
-  moi= smqoi$moi #metrics of interest
-  probsoi= smqoi$probsoi #quantiles of interest 
   
   summary_list <- vector(mode = "list", length = nnames)
   params_list <- vector(mode = "list", length = nnames)
-
-  # list of parameters that is be used in data generating procedure
-  group_params <- list(n=n, 
-                       ntest= ntest,
-                       p=p,
-                       sigma= sigma, 
-                       seed= seed,
-                       groups_n= G,
-                       group_nus= group_nus,
-                       rho_in = rho_in, 
-                       rho_out = rho_out, 
-                       covx = covx,
-                       #group_rhos= group_rhos ,
-                       #group_cor_type= group_cor_type,
-                       group_ps= group_ps 
-                       #group_gen_coef_functions= group_gen_coef_functions
-                       )
   
-  #---same data for all fits 
-  data_gen_params <- group_params
-  data_gen_params$y <- y
-  data_gen_params$ytest <-ytest
-  data_gen_params$beta <- beta
-  data_gen_params$X <- X
-  data_gen_params$Xtest <- Xtest
-  
-  #create a temporary folder to store stan csv files
+  #--- Create a temporary folder to store stan csv files
   
   temp_directory <- paste0("temp_stan_files/",seed)
   dir.create(temp_directory)
   data_gen_params$temp_directory <- temp_directory
-  #stan_models <- fits_params$stan_models
   
   
   #Cycle through models
@@ -575,7 +476,7 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
     
     mcmc_params <- make_mcmc_params(names_list[i], 
                                     fits_params$mcmc_params[[i]], 
-                                    data_gen_params)
+                                    data_gen_params = dgp_list)
     
     mcmc_params$iter <-  fits_params$mcmc_params[[i]]$iter
     
@@ -583,20 +484,20 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
                                data_gen_params)
     
     
-    fitfn <- get(paste0(fits_list[i],"fit"))
-    fit <- fitfn(params_list[[i]])
+    fitfn <- get(paste0(fits_list[i],"fit")) # Get fit function
+    fit <- fitfn(params_list[[i]]) # Run stan fit
     
     #Summarize
     if(fit$fit.error){
       summary_list[[i]] <- NULL
     }else{
       fit_summary_params <- list(fit= fit$fit,
-                                 rtheta=rtheta,
+                                 rtheta= dgp_list$rtheta,
                                  standat= params_list[[i]],
-                                 voi=voi,
-                                 moi= moi,
+                                 voi=smqoi$voi,
+                                 moi= smqoi$moi,
                                  seed= seed,
-                                 probsoi= probsoi)
+                                 probsoi= smqoi$probsoi)
       
       summary_list[[i]] <- myfitsummary(fit_summary_params)
     }      

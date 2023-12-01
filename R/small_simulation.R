@@ -38,7 +38,7 @@ group_ps = rep(5, G)
 p= sum(group_ps)
 
 # how to generate coefficients inside each group
-group_nus = rep(0.5,G)
+group_nus = rep(0.1,G)
 group_gen_coef_functions= rep("gen_coef_sparse_norm", G) 
 
 
@@ -74,9 +74,12 @@ set.seed(seed)
 X <- rmvnorm(n, mean= rep(0,p), sigma=covx)
 X <- scale(X)
 
+
+
 set.seed(seed+12313451)
 Xtest <- rmvnorm(ntest, mean= rep(0,p), sigma=covx)
 Xtest <- scale(Xtest)
+Xtest <- cbind(rep(1,ntest), Xtest)
 
 set.seed(seed)
 
@@ -91,8 +94,8 @@ real_params <- list(beta= beta,
                     tau2= R2/(1-R2))
 
 # Generate y
-y= as.numeric(cbind(rep(1,n), X)%*%c(alpha,beta)+rnorm(n,0, sigma))          
-ytest= as.numeric(cbind(rep(1,ntest), Xtest)%*%c(alpha,beta)+rnorm(ntest,0, sigma))          
+y= as.numeric( X%*%c(alpha,beta)+rnorm(n,0, sigma))          
+ytest= as.numeric(Xtest %*%c(alpha,beta)+rnorm(ntest,0, sigma))          
 
 #--- stan
 
@@ -105,21 +108,26 @@ saveRDS(mod_R2D2grouped, "stan/r2d2groupedcmdstanmodel")
 #hyperparametes
 R2D2_mean_R2 = 0.5
 R2D2_prec_R2 =  1
-R2D2_alpha_groups= rep(5, G)
-R2D2_groups_alphas= rep(0.5, p)
+R2D2_alpha_groups= rep(1,  G)
+R2D2_per_group_alphas = rep(0.5, p)
 
 params <- list(seed= seed, 
-               p=p, n=n, X=X, y=y, 
-               ntest= ntest, Xtest= Xtest, ytest= ytest,
+               p=p+1, N=n, X=X, y=y, 
+               Ntest= ntest, Xtest= Xtest, ytest= ytest,
                G= G,
                pg= group_ps,
                sigma= sigma,
                R2D2_mean_R2= R2D2_mean_R2, 
                R2D2_prec_R2= R2D2_prec_R2, 
                R2D2_alpha_groups= R2D2_alpha_groups, 
-               R2D2_groups_alphas= R2D2_groups_alphas)
+               R2D2_per_group_alphas = R2D2_per_group_alphas,
+               prior_only = 0)
 
-fit <- r2d2groupedfit(params)
+fit <- mod_R2D2grouped$sample(data = params,
+                              seed= seed,
+                              chains = 1,
+                              refresh = 250,
+                              adapt_delta=0.99)
 fit <- fit$fit
 
 draws_df_JA <- as_draws_df(fit)
@@ -162,9 +170,6 @@ draws_df_dk <- as_draws_df(fit_dkv2)
 
 bayesplot::mcmc_recover_hist( x= fit$draws("R2D2_R2"), true= real_params$R2)+ ggtitle("JA")
 bayesplot::mcmc_recover_hist( x= fit_dkv2$draws("R2"), true= real_params$R2)+ ggtitle("DK")
-
-
-
 bayesplot::mcmc_recover_hist( x= fit_dkv2$draws("sigma"), true= real_params$sigma)
 
 
@@ -194,6 +199,15 @@ ppc_dens_overlay(y, ytilde[I,])+ggtitle("JA")
 
 lambdas <- fit$draws("lambdas") 
 mcmc_areas_ridges(lambdas)+ggtitle("JA")
+
+R2D2_phi_groups <- fit$draws("R2D2_phi_groups") 
+mcmc_areas_ridges(R2D2_phi_groups)+ggtitle("JA")
+
+
+lambdas_groups <- fit$draws("lambdas_groups") 
+mcmc_areas_ridges(lambdas_groups)+ggtitle("JA")
+
+
 
 
 print(fit$summary(variables="beta"), n=30)

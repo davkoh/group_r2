@@ -60,8 +60,8 @@ data {
   
   // concentration vector of the Dirichlet prior
   // TODO: Change names 
-  vector<lower=0>[G] R2D2_alpha_groups;
-  vector<lower=0>[p - 1] R2D2_groups_alphas;
+  vector<lower=0>[G] R2D2_alpha_groups; // For the groups 1st decomposition level
+  vector<lower=0>[p - 1] R2D2_per_group_alphas; // For the coefficients inside each group 2nd decomposition level
   
   //---- test data
   int<lower=1> Ntest; // total number of observations
@@ -72,6 +72,8 @@ data {
   real<lower=0> R2D2_mean_R2; // mean of the R2 prior
   real<lower=0> R2D2_prec_R2; // precision of the R2 prior
   int prior_only; // should the likelihood be ignored?
+  
+  
 }
 transformed data {
   int pc = p - 1;
@@ -120,9 +122,9 @@ transformed parameters {
   R2D2_tau2 = sigma ^ 2 * R2D2_R2 / (1 - R2D2_R2);
   
   {
-    // The array called gamma will be segmented and softmaxed (proper term?) to 
+    // The array called gamma will be segmented and softmaxed (proper term?) 
     // for the necessary dirichlet distributions for the 2nd step. The corresponding
-    // concentration vectors are stored in R2D2_groups_alphas which has length p-1
+    // concentration vectors are stored in R2D2_per_group_alphas which has length p-1
     // When we have the segmentation we proceed to apply the usual R2D2 function. The total
     //  variance per group is considered by the product R2D2_phi_groups[i]*R2D2_tau2
     
@@ -140,6 +142,7 @@ transformed parameters {
     }
   }
 }
+
 model {
   // likelihood including constants
   if (!prior_only) {
@@ -157,7 +160,7 @@ model {
   target += dirichlet_lpdf(R2D2_phi_groups | R2D2_alpha_groups); // phi_groups ~ dir(alpha)
   
   // long gammma
-  target += gamma_lpdf(gamma | R2D2_groups_alphas, 1); // prior over gamma
+  target += gamma_lpdf(gamma | R2D2_per_group_alphas, 1); // prior over gamma
   
   target += std_normal_lpdf(zbeta); //normal distribution zbeta
   
@@ -178,6 +181,9 @@ generated quantities {
   array[Ntest] real y_tilde_test;
   vector[Ntest] mu_tilde_test = rep_vector(0.0, Ntest) + ymean + Intercept
                                 + Xctest * beta;
+  
+  // lambdas per group
+  vector[G] lambdas_groups = R2D2_phi_groups*R2D2_tau2; // remember: scaled by sigma^2 as tau2
   
   //--- R2
   real<lower=0, upper=1> R2 = variance(mu_tilde)
