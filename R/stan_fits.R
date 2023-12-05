@@ -74,7 +74,7 @@ r2d2groupedfit <- function(params){
   R2D2_mean_R2=  params$R2D2_mean_R2
   R2D2_prec_R2=  params$R2D2_prec_R2
   R2D2_alpha_groups = params$R2D2_alpha_groups
-  R2D2_groups_alphas = params$R2D2_groups_alphas
+  R2D2_per_group_alphas = params$R2D2_per_group_alphas
   seed= params$seed
   
   dat <- list(
@@ -91,7 +91,7 @@ r2d2groupedfit <- function(params){
     R2D2_mean_R2= R2D2_mean_R2,
     R2D2_prec_R2= R2D2_prec_R2,
     R2D2_alpha_groups = R2D2_alpha_groups,
-    R2D2_groups_alphas = R2D2_groups_alphas,
+    R2D2_per_group_alphas = R2D2_per_group_alphas,
     prior_only=0
   )
   

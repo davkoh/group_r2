@@ -443,9 +443,8 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
   
   #------ Generate data
   
-  # Data generating mechanism is needed
-  
-  # Data gen mechanism should be inside sim_cond
+  # Data generating procedure is needed
+  # Data gen procedure should be inside sim_cond
   # The function should return a list
   
   sim_cond$seed <- seed #need the seed to control the dgp
@@ -467,7 +466,7 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
   
   temp_directory <- paste0("temp_stan_files/",seed)
   dir.create(temp_directory)
-  data_gen_params$temp_directory <- temp_directory
+  dgp_list$temp_directory <- temp_directory
   
   
   #Cycle through models
@@ -481,7 +480,7 @@ cond_sim <-  function(sim_params, sim_cond, smqoi, seed = NULL){
     mcmc_params$iter <-  fits_params$mcmc_params[[i]]$iter
     
     params_list[[i]] <- append(mcmc_params,
-                               data_gen_params)
+                               dgp_list)
     
     
     fitfn <- get(paste0(fits_list[i],"fit")) # Get fit function
@@ -569,42 +568,136 @@ prmse <-function(standat, fit){
   
 }  
 
-prmse_theta0 <- function(fit, theta_name, real_theta) {
+prmse_theta <- function(fit, theta_name, real_theta) {
+  # Calculate posterior RMSE for theta
   theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
-  theta_temp= matrix( real_theta, byrow = TRUE, nrow =dim(theta_hat)[1], 
+  theta_real =matrix( real_theta, 
+                      byrow = TRUE, 
+                      nrow =dim(theta_hat)[1],
                       ncol = dim(theta_hat)[2])
-  sqrt(mean((theta_hat - theta_temp)^2))
+  
+  temp <- rowSums(((theta_hat - theta_real))*((theta_hat - theta_real)))
+  sqrt(mean(temp))
+  
 }
 
-#Calculate posterior per parameter rmse
-prmse_theta_pp <- function(fit, theta_name, real_theta){
+prmse_theta0 <- function(fit, theta_name, real_theta) {
+  # Posterior RMSE for null theta
   
+  Index <- real_theta==0
+  
+  if( sum(Index) > 0 ){
+    real_theta_0 <- real_theta[Index]
+    
+    theta_hat_0 <- as_draws_matrix(fit$draws(variables = theta_name))[,Index]
+    
+    theta_temp= matrix( real_theta_0, 
+                        byrow = TRUE, 
+                        nrow =dim(theta_hat_0)[1], 
+                        ncol = dim(theta_hat_0)[2])
+    
+    temp <- rowSums(((theta_hat_0 - theta_temp))*((theta_hat_0 - theta_temp)))
+    return(sqrt(mean(temp)))
+  }else{
+    return(NA)
+  }
+}
+
+
+prmse_thetan0 <- function(fit, theta_name, real_theta) {
+  #posterior RMSE for non null theta
+  Index <- real_theta!=0
+  if( sum(Index) > 0 ){
+    real_theta_n0 <- real_theta[Index]
+    
+    theta_hat_n0 <- as_draws_matrix(fit$draws(variables = theta_name))[,Index]
+    
+    theta_temp= matrix( real_theta_n0, 
+                        byrow = TRUE, 
+                        nrow =dim(theta_hat_n0)[1], 
+                        ncol = dim(theta_hat_n0)[2])
+    
+    temp <- rowSums(((theta_hat_n0 - theta_temp))*((theta_hat_n0 - theta_temp)))
+    return(sqrt(mean(temp)))
+  }else{
+    return(NA)
+  }
+  
+}
+
+
+prmse_theta_pp <- function(fit, theta_name, real_theta){
+  # Per parameter RMSE
+  # prmse for each coefficient
+  
+  # theta_hat_i is the ith posterior draw
+  # This is our favorite one c:
+  # We want to have comparability across different ps
+  temp= c()
+  theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
+  for(i in 1:length(real_theta)){
+    #rmse per parameter
+    temp[i]= sqrt(mean((theta_hat[, i]-real_theta[i])^2)) # how far theta_hat_i is from real_theta
+  }
+  
+  # Average of rmses across all posterior samples
+  mean(temp)
+  
+}
+
+
+prmse_theta_pp0 <- function(fit, theta_name, real_theta){
+  # per parameter RMSE on null coefficients only
+  # prmse for each coefficient
+  
+  # theta_hat_i is the ith posterior draw
+  # This is our favorite one c:
+  # We want to have comparability across different ps
+  Index <- real_theta==0
+  
+  if(sum(Index)>0){
+    temp= c()
+    theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
+    theta_hat = theta_hat[,Index]
+    for(i in 1:length(real_theta[Index])){
+      #rmse per parameter
+      temp[i]= sqrt(mean((theta_hat[, i]-real_theta[i])^2)) # how far theta_hat_i is from real_theta
+    }
+    # Average of rmses across all posterior samples
+    return(mean(temp))
+    
+  }else{
+    return(NA)
+  }
+  
+}
+
+prmse_theta_ppn0 <- function(fit, theta_name, real_theta){
   
   # per parameter RMSE
   # prmse for each coefficient
   
   # This is our favorite one c:
   # We want to have comparability across different ps
+  Index <- real_theta!=0
   
-  temp= c()
-  theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
-  for(i in 1:length(real_theta)){
-    #rmse per parameter
-    temp[i]= sqrt(mean((theta_hat[, i]-real_theta[i])^2))
+  if(sum(Index)>0){
+    temp= c()
+    theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
+    theta_hat = theta_hat[,Index]
+    for(i in 1:length(real_theta[Index])){
+      #rmse per parameter
+      temp[i]= sqrt(mean((theta_hat[, i]-real_theta[i])^2)) # how far theta_hat_i is from real_theta
+    }
+    # Average of rmses across all posterior samples
+    return(mean(temp))
+    
+  }else{
+    return(NA)
   }
-  #average of rmses
-  mean(temp)
-  
 }
 
-prmse_theta <- function(fit, theta_name, real_theta) {
-  theta_hat = as_draws_matrix(fit$draws(variables = theta_name))
-  theta_temp=matrix( real_theta, byrow = TRUE, nrow =dim(theta_hat)[1], ncol = dim(theta_hat)[2])
-  
-  temp <- rowSums(((theta_hat - theta_temp))*((theta_hat - theta_temp)))
-  sqrt(mean(temp))
-  
-}
+
 
 myfitsummary <- function(fit_summary_params){
   #fit: stan fit
@@ -634,28 +727,36 @@ myfitsummary <- function(fit_summary_params){
                      as.vector(t(fit$loo()$estimates))[1:4],
                      as.vector(table(cut(fit$loo()$diagnostics$pareto_k, 
                                          breaks=c(-Inf,0.5, 0.7, 1, Inf)))),
-                     prmse_theta(fit, "beta",standat$beta ),
-                     prmse_theta0(fit, "beta",standat$beta ),
+                     prmse_theta(fit, "beta", standat$beta ),
+                     prmse_theta0(fit, "beta", standat$beta ),
+                     prmse_thetan0(fit, "beta", standat$beta ),
                      prmse_theta_pp( fit , "beta", standat$beta),
-                     prmse_theta_pp(fit, "R2", as.numeric(rtheta["R2"]) ),
+                     prmse_theta_pp0( fit , "beta", standat$beta),
+                     prmse_theta_ppn0( fit , "beta", standat$beta),
+                     #prmse_theta_pp_n0(fit, "R2D2_R2", as.numeric(rtheta["R2"]) ),
                      #prmse_theta_pp(fit, "sigma", standat$sigma ),
-                     prmse(standat,fit)))
+                     prmse(standat,fit), 
+                     sum(standat$beta==0),
+                     sum(standat$beta!=0))
+  )
   
   names(perf) <- c("lpd_train", "lpd_test",
                    "elpd_loo","elpd_loo_sd","p_loo", "p_loo_sd",
                    "paretok_good", "paretok_ok","paretok_bad", "paretok_verybad",
-                   "rmse_b", "rmse_b0", "rmse_bpp",
-                   "rmse_R2",
+                   "rmse_b", "rmse_b0", "rmse_bn0",
+                   "rmse_bpp", "rmse_bpp0", "rmse_bppn0",
+                   #"rmse_R2",
                    #"rmse_sigma", 
                    "rmse1_train", "rmse2_train", "rmse3_train", "rmse4_train",
-                   "rmse1_test", "rmse2_test", "rmse3_test", "rmse4_test")
+                   "rmse1_test", "rmse2_test", "rmse3_test", "rmse4_test",
+                   "p0", "pn0")
   
+  final_result <- list(seed= seed,
+                       time= fit$time(), 
+                       sm= sm,
+                       perf= perf, 
+                       rtheta= rtheta)
   
-  final_result <- list(seed=seed,
-                       time=fit$time(), 
-                       sm=sm, 
-                       perf=perf, 
-                       rtheta=rtheta)
   
   
   final_result

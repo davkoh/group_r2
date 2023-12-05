@@ -209,7 +209,6 @@ mcmc_areas_ridges(lambdas_groups)+ggtitle("JA")
 
 
 
-
 print(fit$summary(variables="beta"), n=30)
 print(fit_dkv2$summary(variables="beta"), n=30)
 real_params$beta

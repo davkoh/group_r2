@@ -7,7 +7,7 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   # R2D2s
   R2D2_mean_R2= 0.5
-  R2D2_prec_R2= 2
+  R2D2_prec_R2= 1
   api= 0.5
   
   alpha_params <- list(api=api)
@@ -44,8 +44,6 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
                                   hs_df_slab = 4, 
                                   hs_scale_slab = 2)
   
-  
-  
   #--- gigg
   
   mcmc_params_gigg <- NULL
@@ -54,8 +52,8 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   names_list = c("r2d2", 
                  "r2d2_grouped", 
-                 "horseshoe",
-                 "rhorseshoe",
+                # "horseshoe",
+                # "rhorseshoe",
                  "gigg")
   
   
@@ -63,8 +61,8 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   # Stan fits that will be used
   fits_list = c("r2d2",
                 "r2d2grouped",
-                "horseshoe",
-                "rhorseshoe",
+                #"horseshoe",
+                #"rhorseshoe",
                 "gigg"
                 )
   
@@ -75,9 +73,10 @@ get_sim_mcmc_params_data <- function(R2D2_alpha_function,
   
   mcmc_params <-  list(mcmc_params_r2d2= mcmc_params_r2d2, 
                        mcmc_params_r2d2_grouped = mcmc_params_r2d2_grouped, 
-                       mcmc_params_horseshoe = NULL, 
-                       mcmc_params_rhorseshoe = mcmc_params_rhorseshoe,
+                       #mcmc_params_horseshoe = NULL, 
+                       #mcmc_params_rhorseshoe = mcmc_params_rhorseshoe,
                        mcmc_params_gigg= mcmc_params_gigg)
+  
   #Used in main script of simulation
   
   fits_params <-  list(nfits=nfits, 

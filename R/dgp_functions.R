@@ -63,11 +63,22 @@ boss_dgp <- function(sim_cond){
   
   
   # Generate beta BOSS dgp
-  if (type == "dist"){
+  if(type == "dist"){
     beta <- t(cbind(t(rep(0.5,5)),t(rep(1,5)),t(rep(0,p-p/G))))
-  } else {
+  }
+  
+  if(type=="con"){
     beta <- array(0,c(p,1))
     beta[seq(1,p,p/G)] <- c(0.5,1,1.5,2,2)
+  }
+  
+  if (type == "rdist"){
+    beta <- t(cbind(t(rnorm(10, 0, 3)),t(rep(0,p-p/G))))
+  }
+  
+  if(type=="rcon"){
+    beta <- array(0,c(p,1))
+    beta[seq(1,p,p/G)] <- rnorm(5,0, 3)
   }
   
   group_ps <- rep(p/G, G)
